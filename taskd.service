@@ -1,0 +1,15 @@
+[Unit]
+Description="TaskWarrior's TaskServer"
+Requires=network.target
+
+[Install]
+WantedBy=default.target
+
+[Service]
+Type=forking
+User=taskd
+Group=taskd
+Environment=TASKDDATA=/var/lib/taskd
+ExecStart=/usr/bin/taskdctl start
+ExecStop=/usr/bin/taskdctl stop
+

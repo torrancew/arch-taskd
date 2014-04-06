@@ -1,0 +1,40 @@
+post_install() {
+  groupadd -g 47 --system taskd
+  useradd  -u 47 --system -g taskd \
+    -d /var/lib/taskd -s /bin/sh taskd
+
+  su -c 'taskd init   --data /var/lib/taskd' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd server 0.0.0.0:53589' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd log /var/log/taskd.log' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd pid.file /run/taskd.pid' - taskd &>/dev/null
+  su -c "taskd config --data /var/lib/taskd client.allow '^task [2-9]'" - taskd &>/dev/null
+
+  su -c 'cd /var/lib/taskd && mkdir ssl && chmod 0750 ssl' - taskd &>/dev/null
+  su -c 'cd /usr/share/taskd/pki && ./generate' - taskd &>/dev/null
+  su -c 'cp /usr/share/taskd/pki/*.pem /var/lib/taskd/ssl && shred -u /var/lib/taskd/ssl/ca.key.pem' - taskd &>/dev/null
+  su -c 'chmod 0444 /var/lib/taskd/ssl/*.pem && chmod 0400 /var/lib/taskd/ssl/*.key.pem' - taskd
+
+  su -c 'taskd config --data /var/lib/taskd ca.cert /var/lib/taskd/ssl/ca.cert.pem' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd server.crl /var/lib/taskd/ssl/server.crl.pem' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd server.key /var/lib/taskd/ssl/server.key.pem' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd server.cert /var/lib/taskd/ssl/server.cert.pem' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd client.key /var/lib/taskd/ssl/client.key.pem' - taskd &>/dev/null
+  su -c 'taskd config --data /var/lib/taskd client.cert /var/lib/taskd/ssl/client.cert.pem' - taskd &>/dev/null
+}
+
+post_upgrade() {
+  getent group  taskd &>/dev/null || \
+    groupadd -g 47 --system taskd &>/dev/null
+
+  getent passwd taskd &>/dev/null || \
+    useradd -u 47 --system -g taskd  \
+    -d /var/lib/taskd -s /bin/sh taskd &>/dev/null
+}
+
+pre_remove() {
+  getent passwd taskd &>/dev/null && \
+    userdel taskd &>/dev/null
+
+  getent group taskd &>/dev/null && \
+    groupdel taskd &>/dev/null
+}
